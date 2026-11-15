@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from analysis.clean import clean_dataframe
-from database.db import load_dataframe
+from database.db import insert_vehicles
 
 RAW_DIR = Path("data/raw")
 
@@ -47,7 +47,7 @@ def main():
 
     raw = pd.read_csv(raw_path)
     clean = clean_dataframe(raw)
-    inserted = load_dataframe(clean)
+    inserted = insert_vehicles(clean)
     print(f"Raw rows: {len(raw)} | after cleaning: {len(clean)} | new rows in DB: {inserted}")
 
 

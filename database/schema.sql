@@ -9,10 +9,13 @@ CREATE TABLE IF NOT EXISTS vehicles (
     price       INTEGER NOT NULL,
     location    TEXT,
     seller_type TEXT,
-    url         TEXT UNIQUE,
-    scraped_on  TEXT
+    url         TEXT,
+    scraped_on  TEXT,
+    UNIQUE(source, url)
 );
 
-CREATE INDEX IF NOT EXISTS idx_vehicles_model ON vehicles(brand, model);
-CREATE INDEX IF NOT EXISTS idx_vehicles_year  ON vehicles(year);
-CREATE INDEX IF NOT EXISTS idx_vehicles_price ON vehicles(price);
+CREATE INDEX IF NOT EXISTS idx_vehicles_brand     ON vehicles(brand);
+CREATE INDEX IF NOT EXISTS idx_vehicles_model     ON vehicles(model);
+CREATE INDEX IF NOT EXISTS idx_vehicles_year      ON vehicles(year);
+CREATE INDEX IF NOT EXISTS idx_vehicles_fuel_type ON vehicles(fuel_type);
+CREATE INDEX IF NOT EXISTS idx_vehicles_price     ON vehicles(price);
