@@ -29,10 +29,22 @@ def get_connection(path=None):
 # init_db
 # ---------------------------------------------------------------------------
 
+# Columns added after the first schema version. init_db() adds them to an
+# existing vehicles.db so teammates do not have to delete their database.
+_MIGRATION_COLUMNS = {"image_url": "TEXT", "image_alt": "TEXT"}
+
+
 def init_db(path=None):
-    """Create the vehicles table (and indexes) from schema.sql."""
+    """Create the vehicles table (and indexes) from schema.sql.
+
+    Also adds any newer columns (see _MIGRATION_COLUMNS) to an older database.
+    """
     with get_connection(path) as conn:
         conn.executescript((HERE / "schema.sql").read_text())
+        existing = {row["name"] for row in conn.execute("PRAGMA table_info(vehicles)")}
+        for column, col_type in _MIGRATION_COLUMNS.items():
+            if column not in existing:
+                conn.execute(f"ALTER TABLE vehicles ADD COLUMN {column} {col_type}")
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +54,7 @@ def init_db(path=None):
 _COLS = [
     "source", "brand", "model", "year", "fuel_type", "km_driven",
     "price", "location", "seller_type", "url", "scraped_on",
+    "image_url", "image_alt",
 ]
 
 
@@ -50,8 +63,13 @@ def insert_vehicles(df, path=None):
 
     Uses INSERT OR IGNORE so rows whose (source, url) already exist
     are silently skipped.  Returns the number of newly inserted rows.
+    The optional image columns may be missing from *df* (older CSVs): they are
+    stored as NULL. Any other missing column still raises KeyError, as before.
     """
     init_db(path)
+    for optional in _MIGRATION_COLUMNS:
+        if optional not in df.columns:
+            df = df.assign(**{optional: None})
 
     placeholders = ", ".join("?" for _ in _COLS)
     col_names = ", ".join(_COLS)

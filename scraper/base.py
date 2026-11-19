@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 FIELDS = [
     "source", "brand", "model", "year", "fuel_type", "km_driven",
     "price", "location", "seller_type", "url", "scraped_on",
+    "image_url", "image_alt",   # primary photo of the listing, or None
 ]
 
 USER_AGENT = "UsedVehiclePriceStudentProject/1.0 (college project; contact: your-email@example.com)"
