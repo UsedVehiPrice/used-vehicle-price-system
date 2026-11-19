@@ -3,6 +3,8 @@ import re
 
 import pandas as pd
 
+from scraper.images import normalize_image_url
+
 FUEL_MAP = {
     "petrol": "Petrol", "gasoline": "Petrol",
     "diesel": "Diesel",
@@ -62,6 +64,16 @@ def clean_dataframe(df):
     df["year"] = pd.to_numeric(df["year"], errors="coerce")
     for col in ("brand", "model", "location", "seller_type"):
         df[col] = df[col].astype("string").str.strip().str.title()
+
+    # listing photo: keep only absolute http(s) URLs, otherwise None
+    if "image_url" not in df.columns:
+        df["image_url"] = None
+    if "image_alt" not in df.columns:
+        df["image_alt"] = None
+    df["image_url"] = df["image_url"].map(normalize_image_url).astype(object)
+    df["image_alt"] = df["image_alt"].map(
+        lambda v: v.strip() if isinstance(v, str) and v.strip() else None
+    ).astype(object)
 
     # drop rows we cannot use, then sensible-range filters
     df = df.dropna(subset=["brand", "model", "year", "price"])

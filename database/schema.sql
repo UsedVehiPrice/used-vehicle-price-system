@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS vehicles (
     seller_type TEXT,
     url         TEXT,
     scraped_on  TEXT,
+    image_url   TEXT,
+    image_alt   TEXT,
     UNIQUE(source, url)
 );
 

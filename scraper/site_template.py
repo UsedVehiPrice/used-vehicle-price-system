@@ -10,6 +10,7 @@ Before scraping any site:
   3. Keep delay_seconds >= 2 and max_pages small.
 """
 from scraper.base import BaseScraper
+from scraper.images import extract_primary_image, normalize_image_url
 
 
 class TemplateSiteScraper(BaseScraper):
@@ -30,6 +31,20 @@ class TemplateSiteScraper(BaseScraper):
             link = card.select_one("a")
             if not (title and price):
                 continue  # skip incomplete listings
+
+            # Listing photo (optional). Two ways, use whichever the site supports:
+            #  a) the <img> on the card:
+            img = card.select_one("img")
+            image_url = normalize_image_url(
+                (img.get("src") or img.get("data-src")) if img else None,
+                base_url=self.base_url,
+            )
+            image_alt = img.get("alt") if img else None
+            #  b) the listing's own page (og:image / JSON-LD), one extra request:
+            #       detail = self.fetch(listing_url)
+            #       image_url, image_alt = extract_primary_image(detail, listing_url) if detail else (None, None)
+            # Never use a generic stock photo; None is fine.
+
             rows.append({
                 "brand": None,            # fill from the title or a field
                 "model": title.get_text(strip=True),
@@ -40,5 +55,7 @@ class TemplateSiteScraper(BaseScraper):
                 "location": None,
                 "seller_type": None,
                 "url": link["href"] if link and link.has_attr("href") else None,
+                "image_url": image_url,
+                "image_alt": image_alt,
             })
         return rows
