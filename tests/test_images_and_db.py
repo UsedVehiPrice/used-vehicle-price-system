@@ -107,6 +107,14 @@ def test_insert_without_image_columns_still_works(tmp_path):
     assert row["image_url"] is None
 
 
+def test_missing_text_values_are_stored_as_null(tmp_path):
+    # after cleaning, an empty text column holds pandas NA; this used to crash the insert
+    df = clean_dataframe(_raw(location=None, seller_type=None))
+    assert db.insert_vehicles(df, tmp_path / "t.db") == 1
+    row = db.query_vehicles({}, tmp_path / "t.db")[0]
+    assert row["location"] is None and row["seller_type"] is None
+
+
 def test_missing_required_column_still_fails_loudly(tmp_path):
     df = clean_dataframe(_raw()).drop(columns=["image_url", "image_alt", "price"])
     with pytest.raises(KeyError):

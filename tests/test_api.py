@@ -80,6 +80,11 @@ def test_unsafe_image_urls_are_never_returned(client):
     assert rows["Nexon"]["image_url"] is None                                           # base64 data URI
 
 
+def test_only_real_web_links_are_returned_as_url(client):
+    # test rows use url "u1", "u2" ... (and dataset rows use "dataset-...:row-N"): not web addresses
+    assert all(r["url"] is None for r in client.get("/vehicles").json())
+
+
 def test_null_km_is_allowed(client):
     rows = {r["model"]: r for r in client.get("/vehicles").json()}
     assert rows["Nexon"]["km_driven"] is None
