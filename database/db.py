@@ -75,10 +75,11 @@ def insert_vehicles(df, path=None):
     col_names = ", ".join(_COLS)
     sql = f"INSERT OR IGNORE INTO vehicles ({col_names}) VALUES ({placeholders})"
 
-    records = [
-        tuple(None if v is None or v != v else v for v in row)
-        for row in df[_COLS].astype(object).itertuples(index=False, name=None)
-    ]
+    # Turn every kind of "missing" (None, NaN, pandas NA) into None so it is stored as NULL.
+    # (The old `v != v` test crashed on pandas NA, e.g. a text column with no values.)
+    values = df[_COLS].astype(object)
+    values = values.where(values.notna(), None)
+    records = list(values.itertuples(index=False, name=None))
 
     with get_connection(path) as conn:
         before = conn.total_changes

@@ -7,7 +7,7 @@ year, fuel type and kilometres driven.
 ## Pipeline
 
 ```
-scraper/  ->  data/raw/*.csv  ->  analysis/clean.py  ->  database (SQLite)  ->  backend (FastAPI)  ->  frontend (Streamlit)
+scraper/  ->  data/raw/*.csv  ->  analysis/clean.py  ->  database (SQLite)  ->  backend (FastAPI)  ->  frontend (React + Vite)
 ```
 
 | Folder | Purpose |
@@ -16,7 +16,7 @@ scraper/  ->  data/raw/*.csv  ->  analysis/clean.py  ->  database (SQLite)  ->  
 | `analysis/` | `clean.py` (cleaning), `analyze.py` (averages, good-deal detection) |
 | `database/` | `schema.sql`, `db.py` (SQLite) |
 | `backend/` | `main.py` REST API |
-| `frontend/` | `app.py` Streamlit dashboard |
+| `frontend/` | React + Vite web app (`src/`, `package.json`) |
 | `tests/` | Automated tests (`pytest`) |
 | `data/raw/` | Raw scraped CSVs (not committed to Git) |
 
@@ -30,22 +30,59 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-## Run with sample data (works immediately)
-
-```bash
-python run_pipeline.py --sample        # makes fake data, cleans it, loads the DB
-streamlit run frontend/app.py          # dashboard
-uvicorn backend.main:app --reload      # API, docs at http://127.0.0.1:8000/docs
-python -m pytest                       # tests
-```
-
-The sample data is **fake and for development only**. Never present it as real results.
-
 ## Run with real data
 
-1. Copy `scraper/site_template.py` to `scraper/site_<name>.py` and fill in the real URL and CSS selectors.
-2. Add your scraper to the `SCRAPERS` list in `run_pipeline.py`.
-3. `python run_pipeline.py --scrape`
+The project database currently holds **1,778 real used-car listings** from the Kaggle dataset
+"Used Cars Price Prediction" (`Data_Train.csv`), restricted to **Chennai, Coimbatore and Kochi**:
+27 brands, 175 models, manufacturing years 2001-2019, prices Rs 65,000 to Rs 97 lakh.
+Kaggle page: <ADD THE DATASET URL AND LICENCE HERE>.
+
+**This data was downloaded, not scraped.** It is historical (not live listings) and has no listing URL,
+photo or seller type. Say so in the report and the demo. Load it with:
+
+```bash
+# put Data_Train.csv in data/raw/ (not committed to Git), then:
+python import_dataset.py data/raw/Data_Train.csv --dry-run                         # check only
+python import_dataset.py data/raw/Data_Train.csv --cities Chennai,Coimbatore,Kochi # import
+```
+It goes through the same cleaning and database as scraped data, and is safe to run twice.
+
+- **Only `Data_Train.csv` works.** `Data_Test.csv` has no price column. A file saved from a Kaggle web page
+  (instead of the Download button) is rejected with a message.
+- **Model names are approximate:** the model is the first word(s) after the brand ("Creta", "Wagon R");
+  variant text is dropped. A few prices in the source file are wrong (for example one 2019 Porsche Cayenne at
+  2.02 lakh); spot-check before quoting numbers.
+- **Row limit:** the API returns at most 2000 listings per request and the frontend asks for 500, so importing
+  all 6015 rows would hide the expensive cars. Use `--cities`, or ask the frontend team to request
+  `limit=2000` / filter on the server.
+- Check the dataset's licence on its Kaggle page before using it.
+
+### Live scraping (not done yet)
+No website scraper is finished yet. To add one: copy `scraper/site_template.py` to `scraper/site_<name>.py`,
+fill in the real URL and CSS selectors, add it to the `SCRAPERS` list in `run_pipeline.py`, then run
+`python run_pipeline.py --scrape`. Scraped rows will be stored under their own source name, next to the dataset.
+
+## Quick demo mode (sample data, for testing only)
+
+```bash
+python run_pipeline.py --sample        # generates FAKE placeholder rows (sources site-a, site-b ...)
+python -m pytest                       # tests
+```
+Use this only to test the code without real data. Never present it as results. It writes into the same
+database, so for the real data delete `database/vehicles.db` and import the dataset again.
+
+## Run the whole app
+
+Backend (API) and frontend (React + Vite) run in two terminals:
+
+```bash
+python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 9000   # API, docs at http://127.0.0.1:9000/docs
+cd frontend
+npm install
+npm run dev                                                                 # http://localhost:5173
+```
+`frontend/.env.local` must contain `VITE_API_PROXY_TARGET=http://127.0.0.1:9000` if the API is not on port 8000.
+Needs Node 20.19+ or 22.12+.
 
 ### Scraping rules
 - Read each site's `robots.txt` and terms of service first. Only scrape what is allowed.
@@ -56,7 +93,7 @@ The sample data is **fake and for development only**. Never present it as real r
 ## Backend API (FastAPI)
 
 ```bash
-uvicorn backend.main:app --reload                      # http://127.0.0.1:8000/docs
+uvicorn backend.main:app --reload                      # http://127.0.0.1:8000/docs (use --port 9000 if 8000 is blocked)
 uvicorn backend.main:app --host 0.0.0.0 --port 8000    # reachable from other laptops
 python -m uvicorn backend.main:app --reload            # if uvicorn.exe is blocked by Windows
 ```
@@ -84,7 +121,7 @@ not implemented; if a source blocks hotlinking the frontend shows its own labell
 own `/api` proxy, so CORS only matters for a deployed frontend.
 
 **Existing databases** are upgraded automatically (`init_db()` adds the `image_url` / `image_alt` columns).
-To start completely fresh, delete `database/vehicles.db` and run `python run_pipeline.py --sample`.
+To start completely fresh, delete `database/vehicles.db` and import the dataset again (see "Run with real data").
 
 ## Team workflow
 

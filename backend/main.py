@@ -31,7 +31,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from database.db import get_compare, get_connection, get_stats, init_db, query_vehicles
-from scraper.images import normalize_image_url
+from scraper.images import normalize_http_url
 
 MAX_LIMIT = 2000   # the frontend asks for 500 at a time
 
@@ -118,9 +118,11 @@ async def database_error(request: Request, exc: sqlite3.Error):
 # ---------------------------------------------------------------------------
 
 def _serialize(row: dict) -> dict:
-    """Make sure only absolute http(s) image URLs ever leave the API."""
+    """Only absolute http(s) links ever leave the API (listing url and photo url).
+    Dataset rows carry an internal key instead of a web address; that is returned as null."""
     row = dict(row)
-    row["image_url"] = normalize_image_url(row.get("image_url"))
+    row["url"] = normalize_http_url(row.get("url"))
+    row["image_url"] = normalize_http_url(row.get("image_url"))
     if not row["image_url"]:
         row["image_alt"] = None
     return row

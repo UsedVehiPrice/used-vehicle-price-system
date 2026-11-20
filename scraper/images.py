@@ -11,7 +11,7 @@ import json
 from urllib.parse import urljoin, urlparse
 
 
-def normalize_image_url(value, base_url=None):
+def normalize_http_url(value, base_url=None):
     """Return an absolute http(s) URL, or None when the value is unusable."""
     if not isinstance(value, str):
         return None
@@ -23,6 +23,9 @@ def normalize_image_url(value, base_url=None):
     if parts.scheme not in ("http", "https") or not parts.netloc:
         return None
     return absolute
+
+
+normalize_image_url = normalize_http_url   # same rule, used for photos
 
 
 def _meta(soup, **attrs):
