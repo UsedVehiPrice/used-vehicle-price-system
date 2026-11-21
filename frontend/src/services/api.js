@@ -9,7 +9,7 @@ export const api = axios.create({
 });
 
 export async function fetchVehicles(params = {}) {
-  const response = await api.get('/vehicles', { params: { limit: 500, sort: 'price', ...params } });
+  const response = await api.get('/vehicles', { params: { limit: 5000, sort: 'price', ...params } });
   return Array.isArray(response.data) ? response.data : [];
 }
 

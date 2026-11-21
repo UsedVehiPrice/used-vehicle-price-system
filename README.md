@@ -37,7 +37,7 @@ The project database currently holds **1,778 real used-car listings** from the K
 27 brands, 175 models, manufacturing years 2001-2019, prices Rs 65,000 to Rs 97 lakh.
 Kaggle page: <ADD THE DATASET URL AND LICENCE HERE>.
 
-**This data was downloaded, not scraped.** It is historical (not live listings) and has no listing URL,
+**The Kaggle data was downloaded, not scraped** (the CarWale rows below are scraped). It is historical (not live listings) and has no listing URL,
 photo or seller type. Say so in the report and the demo. Load it with:
 
 ```bash
@@ -52,15 +52,38 @@ It goes through the same cleaning and database as scraped data, and is safe to r
 - **Model names are approximate:** the model is the first word(s) after the brand ("Creta", "Wagon R");
   variant text is dropped. A few prices in the source file are wrong (for example one 2019 Porsche Cayenne at
   2.02 lakh); spot-check before quoting numbers.
-- **Row limit:** the API returns at most 2000 listings per request and the frontend asks for 500, so importing
-  all 6015 rows would hide the expensive cars. Use `--cities`, or ask the frontend team to request
-  `limit=2000` / filter on the server.
+- **Row limit:** the API returns at most 10000 listings per request and the frontend asks for 5000, sorted cheapest first.
+  If you import more rows than that, the most expensive cars are not shown.
 - Check the dataset's licence on its Kaggle page before using it.
 
-### Live scraping (not done yet)
-No website scraper is finished yet. To add one: copy `scraper/site_template.py` to `scraper/site_<name>.py`,
-fill in the real URL and CSS selectors, add it to the `SCRAPERS` list in `run_pipeline.py`, then run
-`python run_pipeline.py --scrape`. Scraped rows will be stored under their own source name, next to the dataset.
+### Scraped listings (CarWale)
+`scraper/site_carwale.py` scrapes used-car listings from carwale.com into `data/raw/carwale.csv`: brand, model,
+year, fuel type, kilometres, price, city, **a link to the listing page on carwale.com** and the listing photo URL.
+It checks `robots.txt`, waits between pages and collects no personal data. Setup and run:
+
+```bash
+pip install playwright pandas
+playwright install chromium
+python scraper/site_carwale.py --probe        # page 1 only, prints what it found
+python scraper/site_carwale.py                # default: used Toyota Urban Cruiser Hyryder listings
+python scraper/site_carwale.py --url https://www.carwale.com/used/hyundai-creta/ --out data/raw/carwale_creta.csv
+```
+To scrape many models at once, use the batch runner. It reads `scraper/carwale_models.txt` (one model page per
+line; edit the list freely), scrapes each page politely, and merges everything into `data/raw/carwale_all.csv`:
+
+```bash
+python -m scraper.run_carwale_all --probe                                   # test: first model, page 1 only
+python -m scraper.run_carwale_all --only hyundai-creta --cities chennai     # one model, Chennai page
+python -m scraper.run_carwale_all --cities chennai,coimbatore --max-pages 5 # all models, city pages (takes 1-3 hours)
+python -m scraper.run_carwale_all --cities chennai,coimbatore --max-pages 5 --resume   # continue after Ctrl+C / a crash
+python import_dataset.py data/raw/carwale_all.csv                           # load into the database
+```
+Without `--cities` it scrapes the all-India page of each model, which has hundreds to thousands of listings per
+model. Pages that do not exist are skipped and listed at the end. Ctrl+C stops early and keeps what was collected.
+To show **only** the scraped data in the app, delete `database/vehicles.db` first (this removes the downloaded
+dataset rows too), import the scraped CSVs, and restart the backend.
+Check CarWale's terms of service before collecting more than a small sample, keep `max_pages` low, and say in the
+report that the listings and prices belong to CarWale. Photos are loaded from CarWale's servers, not stored by us.
 
 ## Quick demo mode (sample data, for testing only)
 
@@ -100,7 +123,7 @@ python -m uvicorn backend.main:app --reload            # if uvicorn.exe is block
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /vehicles?brand=&model=&fuel=&min_year=&max_year=&max_km=&max_price=&sort=price&limit=50` | Listings, cheapest first. `sort` is `price`, `year` or `km_driven`; `limit` is 1 to 2000. |
+| `GET /vehicles?brand=&model=&fuel=&min_year=&max_year=&max_km=&max_price=&sort=price&limit=50` | Listings, cheapest first. `sort` is `price`, `year` or `km_driven`; `limit` is 1 to 10000. |
 | `GET /compare?model=City&year=2018` | Listings / average / min / max price per source website (`year` optional). |
 | `GET /stats` | Average price and listing count by brand, model and year. |
 | `GET /health` | `{"status": "ok", "vehicles": <count>}` |

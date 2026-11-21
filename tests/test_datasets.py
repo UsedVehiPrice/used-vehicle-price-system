@@ -122,3 +122,75 @@ def test_reserved_sample_source_names_are_refused(csv_path):
     with pytest.raises(ValueError):
         validate_source_name("site-a")
     assert import_dataset.main([csv_path, "--source", "site-b", "--dry-run"]) == 1
+
+
+# ---- scraper CSV (e.g. data/raw/carwale.csv) ------------------------------------------------
+
+SCRAPED_HEADER = "source,brand,model,year,fuel_type,km_driven,price,location,seller_type,url,scraped_on,image_url,image_alt\n"
+SCRAPED_ROWS = [
+    "carwale,Toyota,Urban Cruiser Hyryder,2024,Hybrid,24800,1775000,\"Makarba, Ahmedabad\",,https://www.carwale.com/used/ahmedabad/toyota-urban-cruiser-hyryder/ab12cd/,2026-11-21,https://imgd.aeplcdn.com/664x374/n/a.jpg,Toyota Hyryder",
+    "carwale,Maruti Suzuki,Swift,2019,Petrol,45000,520000,\"Adyar, Chennai\",,https://www.carwale.com/used/chennai/maruti-suzuki-swift/xy98zt/,2026-11-21,,",
+    "carwale,Tata,Nexon,2021,Electric,12300,1210000,Chennai,,https://www.carwale.com/used/chennai/tata-nexon/q1w2e3/,2026-11-21,\"data:image/png;base64,AAAA\",",
+    "carwale,Tata,Nexon,2021,Electric,12300,1210000,Chennai,,https://www.carwale.com/used/chennai/tata-nexon/q1w2e3/,2026-11-21,,",   # same listing twice
+    "carwale,Honda,City,2018,Petrol,40000,,Chennai,,https://www.carwale.com/used/chennai/honda-city/no1price/,2026-11-21,,",     # no price: dropped
+]
+
+
+@pytest.fixture()
+def scraped_path(tmp_path):
+    p = tmp_path / "carwale.csv"
+    p.write_text(SCRAPED_HEADER + "\n".join(SCRAPED_ROWS) + "\n")
+    return str(p)
+
+
+def test_format_detection(csv_path, scraped_path):
+    from scraper.datasets import detect_format
+    assert detect_format(csv_path) == "used-cars-price"
+    assert detect_format(scraped_path) == "scraped"
+
+
+def test_unknown_layout_is_rejected(tmp_path, capsys):
+    p = tmp_path / "other.csv"
+    p.write_text("a,b\n1,2\n")
+    assert import_dataset.main([str(p)]) == 1
+    assert "unknown file layout" in capsys.readouterr().err
+
+
+def test_scraped_import_keeps_listing_url_and_photo(scraped_path, tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    assert import_dataset.main([scraped_path]) == 0
+    rows = {r["model"]: r for r in db.query_vehicles({"limit": 100})}
+    assert set(rows) == {"Urban Cruiser Hyryder", "Swift", "Nexon"}        # duplicate and no-price rows gone
+    hy = rows["Urban Cruiser Hyryder"]
+    assert hy["source"] == "carwale"
+    assert hy["url"].startswith("https://www.carwale.com/used/ahmedabad/")
+    assert hy["image_url"] == "https://imgd.aeplcdn.com/664x374/n/a.jpg"
+    assert hy["location"] == "Ahmedabad" and hy["fuel_type"] == "Hybrid" and hy["price"] == 1775000
+    assert rows["Swift"]["brand"] == "Maruti Suzuki" and rows["Swift"]["image_url"] is None
+    assert rows["Nexon"]["image_url"] is None                                 # data: URIs are refused
+
+
+def test_scraped_import_twice_and_several_files(scraped_path, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    assert import_dataset.main([scraped_path, scraped_path]) == 0             # same file twice in one run
+    assert len(db.query_vehicles({"limit": 100})) == 3
+    assert "Total new rows added: 3" in capsys.readouterr().out
+
+
+def test_scraped_import_does_not_mix_with_dataset_rows_by_url(csv_path, scraped_path, tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    assert import_dataset.main([csv_path, scraped_path]) == 0
+    sources = {r["source"] for r in db.query_vehicles({"limit": 100})}
+    assert sources == {DEFAULT_SOURCE, "carwale"}
+
+
+def test_scraped_cities_filter_uses_the_city(scraped_path, tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    assert import_dataset.main([scraped_path, "--cities", "chennai"]) == 0
+    assert {r["location"] for r in db.query_vehicles({"limit": 100})} == {"Chennai"}
+
+
+def test_one_bad_file_does_not_stop_the_others(scraped_path, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
+    assert import_dataset.main([str(tmp_path / "missing.csv"), scraped_path]) == 1
+    assert len(db.query_vehicles({"limit": 100})) == 3
