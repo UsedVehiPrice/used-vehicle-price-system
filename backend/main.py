@@ -33,7 +33,7 @@ from pydantic import BaseModel
 from database.db import get_compare, get_connection, get_stats, init_db, query_vehicles
 from scraper.images import normalize_http_url
 
-MAX_LIMIT = 2000   # the frontend asks for 500 at a time
+MAX_LIMIT = 10000   # the frontend asks for 5000 at a time
 
 
 # ---------------------------------------------------------------------------

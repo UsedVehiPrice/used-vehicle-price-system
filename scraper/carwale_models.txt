@@ -1,0 +1,76 @@
+# One CarWale used-car model page per line (blank lines and # comments are ignored).
+# A full URL, or just the slug: "toyota-urban-cruiser-hyryder" means
+#   https://www.carwale.com/used/toyota-urban-cruiser-hyryder/
+# The slug is "<brand>-<model>" in lower case with dashes, as in the listing links on carwale.com.
+# With  --cities chennai,coimbatore  each slug becomes https://www.carwale.com/used/chennai/<slug>/ etc.
+#
+# Slugs marked (checked) were found as real CarWale pages in a web search on 2026-11-21.
+# The others follow the same pattern but were NOT checked: a page that does not exist is skipped
+# by the runner and listed at the end, so a wrong slug only costs a few seconds. Edit freely.
+
+# Maruti Suzuki
+maruti-suzuki-swift          # (checked)
+maruti-suzuki-wagon-r        # (checked)
+maruti-suzuki-baleno
+maruti-suzuki-alto
+maruti-suzuki-dzire
+maruti-suzuki-ertiga
+maruti-suzuki-vitara-brezza
+maruti-suzuki-celerio
+maruti-suzuki-ciaz
+maruti-suzuki-ignis
+maruti-suzuki-eeco
+# Hyundai
+hyundai-creta                # (checked)
+hyundai-grand-i10            # (checked)
+hyundai-i20
+hyundai-venue
+hyundai-verna
+hyundai-i10
+hyundai-xcent
+hyundai-santro
+hyundai-aura
+# Honda
+honda-city                   # (checked)
+honda-amaze
+honda-jazz
+honda-wr-v
+honda-brio
+# Toyota
+toyota-innova-crysta         # (checked)
+toyota-fortuner
+toyota-etios
+toyota-glanza
+toyota-urban-cruiser-hyryder
+toyota-corolla-altis
+# Tata
+tata-nexon                   # (checked)
+tata-tiago
+tata-tigor
+tata-punch
+tata-harrier
+tata-safari
+tata-altroz
+# Mahindra
+mahindra-xuv500              # (checked)
+mahindra-xuv700
+mahindra-xuv300
+mahindra-scorpio
+mahindra-thar
+mahindra-bolero
+# Ford
+ford-ecosport                # (checked)
+ford-figo
+ford-endeavour
+# Volkswagen / Skoda
+volkswagen-polo              # (checked)
+volkswagen-vento
+skoda-rapid
+# Renault / Kia / Nissan / MG
+renault-kwid                 # (checked)
+renault-duster
+renault-triber
+kia-seltos                   # (checked)
+kia-sonet
+nissan-magnite
+mg-hector

@@ -57,7 +57,7 @@ def test_vehicles_other_filters(client):
 
 def test_vehicles_limit(client):
     assert len(client.get("/vehicles", params={"limit": 2}).json()) == 2
-    assert len(client.get("/vehicles", params={"limit": 500}).json()) == 4   # what the frontend sends
+    assert len(client.get("/vehicles", params={"limit": 5000}).json()) == 4   # what the frontend sends
 
 
 def test_vehicles_response_has_every_field_the_frontend_reads(client):
@@ -94,7 +94,7 @@ def test_null_km_is_allowed(client):
     {"sort": "price; DROP TABLE vehicles"},
     {"sort": "brand"},
     {"limit": 0},
-    {"limit": 2001},
+    {"limit": 10001},
     {"max_km": -1},
     {"min_year": "abc"},
     {"max_price": -5},
